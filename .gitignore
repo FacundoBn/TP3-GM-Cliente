@@ -49,6 +49,7 @@ android/local.properties
 *.apk
 *.aar
 *.aab
+android/app/google-services.json
 
 # ============================
 # iOS
