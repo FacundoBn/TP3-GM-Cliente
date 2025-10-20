@@ -1,0 +1,64 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+enum VehicleType { moto, auto, camioneta }
+
+class Vehicle {
+  final String? uid;        // ID generado por Firestore
+  final String plate;      // Patente
+  final String? userUid;   // ID del usuario dueño (nullable)
+  final VehicleType tipo;  // Tipo de vehículo
+
+  Vehicle({
+    this.uid,
+    required this.plate,
+    this.userUid,
+    required this.tipo,
+  });
+
+  /// 🔹 Factory para instanciar desde Firestore
+  factory Vehicle.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data()!;
+    return Vehicle(
+      uid: doc.id,
+      plate: data['plate'] ?? '',
+      userUid: data['userUid'],
+      tipo: _stringToVehicleType(data['tipo'] ?? 'auto'), // default auto
+    );
+  }
+
+  /// 🔹 Serialización a Firestore
+  Map<String, dynamic> toFirestore() {
+    return {
+      'plate': plate,
+      if (userUid != null) 'userUid': userUid,
+      'tipo': _vehicleTypeToString(tipo),
+    };
+  }
+
+  /// Helpers para convertir enum <-> string
+  static VehicleType _stringToVehicleType(String str) {
+    switch (str) {
+      case 'moto':
+        return VehicleType.moto;
+      case 'camioneta':
+        return VehicleType.camioneta;
+      case 'auto':
+        return VehicleType.auto;
+      default:
+        return VehicleType.auto;
+    }
+  }
+
+  static String _vehicleTypeToString(VehicleType tipo) {
+    switch (tipo) {
+      case VehicleType.moto:
+        return 'moto';
+      case VehicleType.camioneta:
+        return 'camioneta';
+      case VehicleType.auto:
+        return 'auto';
+      default:
+        return 'auto';
+    }
+  }
+}

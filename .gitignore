@@ -1,0 +1,85 @@
+# ============================
+# Generic / Misc
+# ============================
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# ============================
+# IntelliJ / VS Code
+# ============================
+*.iml
+*.ipr
+*.iws
+.idea/
+.vscode/
+
+# ============================
+# Flutter / Dart / Pub
+# ============================
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub/
+.pub-cache/
+build/
+coverage/
+.metadata
+**/doc/api/
+**/ios/Flutter/.last_build_id
+
+# ============================
+# Android
+# ============================
+/android/.gradle/
+/android/app/debug/
+/android/app/profile/
+/android/app/release/
+android/local.properties
+*.apk
+*.aar
+*.aab
+
+# ============================
+# iOS
+# ============================
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/AppFrameworkInfo.plist
+ios/Flutter/Flutter.framework
+ios/Flutter/Generated.xcconfig
+ios/Flutter/ephemeral/
+ios/.generated/
+ios/.dart_tool/
+ios/ServiceDefinitions.json
+
+# ============================
+# macOS / Linux / Windows (opcional)
+# ============================
+macos/
+linux/
+windows/
+
+# ============================
+# Firebase / Google Services
+# ============================
+# Si tu repo es público, NO subas estos archivos.
+# Si es privado, podés comentar estas líneas.
+# android/app/google-services.json
+# ios/Runner/GoogleService-Info.plist
+
+# ============================
+# Build Artifacts / Symbolication / Obfuscation
+# ============================
+app.*.symbols
+app.*.map.json
