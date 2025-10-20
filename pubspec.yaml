@@ -14,6 +14,11 @@ dependencies:
     sdk: flutter
   flutter_riverpod: ^3.0.3
   go_router: ^16.2.5
+  qr_flutter: ^4.1.0
+  camera: any
+  google_mlkit_text_recognition: any
+  cupertino_icons: ^1.0.8
+  
 
 dev_dependencies:
   flutter_lints: ^5.0.0

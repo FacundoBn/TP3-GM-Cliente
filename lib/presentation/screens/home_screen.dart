@@ -1,46 +1,55 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:tp3_v2/domain/logic/auth_provider.dart';
+import 'package:go_router/go_router.dart';
+import 'package:tp3_v2/domain/logic/current_user_provider.dart';
 import 'package:tp3_v2/domain/models/user_model.dart';
-import 'package:tp3_v2/presentation/screens/user_vehicles_screen.dart';
+import 'package:tp3_v2/presentation/widgets/app_scaffold.dart';
 
 class HomeScreen extends ConsumerWidget {
-  const HomeScreen({super.key, required this.currentUser});
-
-  // 🔹 Recibe el usuario autenticado de Firebase
-  final UserModel currentUser;
+ 
+  
+  const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-
-    final authService = ref.watch(authServiceProvider);
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Home')),
+    final UserModel? currentUser = ref.watch(currentUserProvider).value;   
+    return AppScaffold(
+      
+      title: 'Inicio',
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('✅ Sesión iniciada correctamente'),
-            const SizedBox(height: 16),
-            Text('e - mail: ${currentUser.email}'),
-            Text('UID: ${currentUser.uid}'),
-            Text('Nombre: ${currentUser.nombre}'),
-            Text('Apellido: ${currentUser.apellido}'),
-            Text('CUIT: ${currentUser.cuit?? 'sin CUIT'}'),
-            const SizedBox(height: 24),
-            Expanded(
-              child: UserVehiclesScreen(),
+            Text(
+              'Bienvenido, ${currentUser?.nombre}!',
+              style: Theme.of(context).textTheme.headlineSmall,
             ),
+            const SizedBox(height: 20),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.qr_code_scanner),
+                title: const Text('Escanear patente'),
+                subtitle: const Text('Registrar nuevo ingreso'),
+                onTap: () => context.go('/scan'),
+              ),
+            ),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.history),
+                title: const Text('Historial'),
+                subtitle: const Text('Ver tickets anteriores'),
+                onTap: () => context.go('/history'),
+              ),
+            ),
+            // ... más contenido de Home
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () async{
-          await authService.signOut();
-        },
-        child: Icon(Icons.logout))
+        onPressed: () => context.go('/scan'),
+        child: const Icon(Icons.qr_code_scanner),
+      ),
     );
   }
 }

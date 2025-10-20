@@ -2,14 +2,12 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:tp3_v2/domain/logic/auth_provider.dart';
 import 'package:tp3_v2/presentation/widgets/app_text_field.dart';
 import 'package:tp3_v2/presentation/widgets/primary_button.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget { 
-  final VoidCallback onToggleAuthMode;
-  
-  const RegisterScreen({super.key, required this.onToggleAuthMode}); 
   
   @override 
   ConsumerState<RegisterScreen> createState() => _RegisterScreenState(); 
@@ -89,7 +87,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ),
               const SizedBox(height: 12),
               TextButton(
-                onPressed: widget.onToggleAuthMode, 
+                onPressed: () => context.go('/login'), 
                 child: const Text('Ya tengo cuenta. Ingresar')
               ),
             ]),
