@@ -1,30 +1,31 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:tp3_v2/domain/logic/auth_provider.dart';
-import 'package:tp3_v2/domain/logic/current_user_provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-class AppScaffold extends ConsumerWidget { // ✅ Cambiar a ConsumerWidget
+/// Scaffold común con:
+/// - AppBar que muestra Back si puede, sino hamburguesa
+/// - Drawer de navegación
+class AppScaffold extends StatelessWidget {
   final String title;
   final Widget body;
+  final PreferredSizeWidget? bottom;
   final List<Widget>? actions;
   final Widget? floatingActionButton;
+  final bool showMenu; // en Login/Register: false
 
   const AppScaffold({
     super.key,
     required this.title,
     required this.body,
+    this.bottom,
     this.actions,
     this.floatingActionButton,
+    this.showMenu = true,
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) { // ✅ Recibe WidgetRef
+  Widget build(BuildContext context) {
     final canPop = Navigator.of(context).canPop();
-    final currentUser = ref.watch(currentUserProvider).value; // ✅ Accede al provider
-    final email = currentUser?.email ?? '';
-
     return Scaffold(
       appBar: AppBar(
         title: Text(title),
@@ -33,64 +34,72 @@ class AppScaffold extends ConsumerWidget { // ✅ Cambiar a ConsumerWidget
             ? IconButton(
                 icon: const Icon(Icons.arrow_back),
                 onPressed: () => context.pop(),
-                tooltip: 'Volver',
               )
-            : Builder(
-                builder: (ctx) => IconButton(
-                  icon: const Icon(Icons.menu),
-                  onPressed: () => Scaffold.of(ctx).openDrawer(),
-                  tooltip: 'Menú',
-                ),
-              ),
+            : (showMenu
+                ? Builder(
+                    builder: (ctx) => IconButton(
+                      icon: const Icon(Icons.menu),
+                      onPressed: () => Scaffold.of(ctx).openDrawer(),
+                    ),
+                  )
+                : null),
         actions: actions,
+        bottom: bottom,
       ),
-      drawer: Drawer(
-        child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (email.isNotEmpty)
-                UserAccountsDrawerHeader(
-                  accountName: Text(currentUser?.nombre ?? 'Usuario'), // ✅ Nombre del usuario
-                  accountEmail: Text(email),
-                  currentAccountPicture: const CircleAvatar(child: Icon(Icons.person)),
-                ),
-              _tile(context, Icons.home,      'Home',            '/home'),
-              _tile(context, Icons.qr_code,   'Escanear',        '/scan'),
-              _tile(context, Icons.history,   'Historial',       '/history'),
-              _tile(context, Icons.settings,  'Ajustes',         '/settings'),
-              const Spacer(),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.logout),
-                title: const Text('Salir'),
-                onTap: () => _logout(context, ref), // ✅ Pasar ref al método
-              ),
-            ],
-          ),
-        ),
-      ),
+      drawer: showMenu ? _AppDrawer() : null,
       body: body,
       floatingActionButton: floatingActionButton,
     );
   }
+}
 
-  // ✅ Método para logout usando Riverpod
-  Future<void> _logout(BuildContext context, WidgetRef ref) async {
-    Navigator.pop(context); // cerrar drawer
-    final authService = ref.read(authServiceProvider);
-    await authService.signOut();
-    // La reactividad de AuthGate manejará la navegación automáticamente
-  }
+class _AppDrawer extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    Future<void> go(String route) async {
+      Navigator.of(context).pop(); // cerrar drawer
+      context.go(route);
+    }
 
-  ListTile _tile(BuildContext context, IconData icon, String label, String route) {
-    return ListTile(
-      leading: Icon(icon),
-      title: Text(label),
-      onTap: () {
-        Navigator.pop(context); // cerrar drawer
-        context.go(route);
-      },
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          children: [
+            UserAccountsDrawerHeader(
+              accountName: Text(user?.displayName ?? ''),
+              accountEmail: Text(user?.email ?? 'Invitado'),
+              currentAccountPicture: const CircleAvatar(child: Icon(Icons.person)),
+            ),
+            ListTile(
+              leading: const Icon(Icons.home),
+              title: const Text('Home'),
+              onTap: () => go('/home'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.qr_code_scanner),
+              title: const Text('Escanear'),
+              onTap: () => go('/scan'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.history),
+              title: const Text('Historial'),
+              onTap: () => go('/history'),
+            ),
+            const Spacer(),
+            const Divider(height: 0),
+            ListTile(
+              leading: const Icon(Icons.logout),
+              title: const Text('Cerrar sesión'),
+              onTap: () async {
+                await FirebaseAuth.instance.signOut();
+                // limpiar stack y enviar a login
+                if (context.mounted) context.go('/login');
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

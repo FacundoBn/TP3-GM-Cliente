@@ -1,70 +1,73 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:tp3_v2/domain/logic/current_user_provider.dart';
-import 'package:tp3_v2/domain/logic/ticket_provider.dart';
-import 'package:tp3_v2/domain/logic/vehicle_provider.dart';
 import 'package:tp3_v2/presentation/widgets/app_scaffold.dart';
 
-class HistoryScreen extends ConsumerStatefulWidget {
+class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
-  @override
-  ConsumerState<HistoryScreen> createState() => _HistoryScreenState();
-}
-
-class _HistoryScreenState extends ConsumerState<HistoryScreen> {
-  String? _selectedPlate;
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = ref.watch(currentUserProvider).value;
-    if (currentUser == null) {
-      return const Scaffold(body: Center(child: Text('No hay usuario')));
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      return const AppScaffold(
+        title: 'Historial',
+        showMenu: false,
+        body: Center(child: Text('Iniciá sesión para ver tu historial')),
+      );
     }
 
-    /* ==========  AsyncValue  ========== */
-    final asyncPlates = ref.watch(userVehiclesProvider(currentUser.uid));
+    final query = FirebaseFirestore.instance
+        .collection('tickets')
+        .where('userId', isEqualTo: user.uid)
+        .where('status', isEqualTo: 'closed');
 
     return AppScaffold(
       title: 'Historial',
-      body: asyncPlates.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (plates) {
-          // <-- plates es List<String> des-envuelto
-          if (plates.isEmpty) {
-            return const Center(child: Text('Sin vehículos'));
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: query.snapshots(),
+        builder: (context, snap) {
+          if (snap.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (!snap.hasData || snap.data!.docs.isEmpty) {
+            return const Center(child: Text('Aún no hay tickets finalizados'));
           }
 
-          // valor inicial sólo cuando hay data
-          _selectedPlate ??= plates.first.plate;
+          final docs = [...snap.data!.docs]..sort((a, b) {
+            final ta = (a.data()['ingreso'] as Timestamp).toDate();
+            final tb = (b.data()['ingreso'] as Timestamp).toDate();
+            return tb.compareTo(ta);
+          });
 
-          return Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Selecciona una patente:',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          return ListView.separated(
+            itemCount: docs.length,
+            separatorBuilder: (_, __) => const Divider(height: 0),
+            itemBuilder: (context, i) {
+              final d = docs[i].data();
+              final id = docs[i].id;
+              final plate = (d['plate'] ?? '') as String;
+              final ingreso = (d['ingreso'] as Timestamp).toDate();
+              final egreso = d['egreso'] != null ? (d['egreso'] as Timestamp).toDate() : null;
+              final price = d['precioFinal'];
+
+              return ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.blueAccent,
+                  child: Icon(Icons.receipt_long, color: Colors.white),
                 ),
-                const SizedBox(height: 10),
-                DropdownButton<String>(
-                  isExpanded: true,
-                  hint: const Text('Elige una patente'),
-                  value: _selectedPlate,
-                  items: plates.map((p) {
-                    return DropdownMenuItem(
-                      value: p.plate, 
-                      child: Text(p.plate));
-                  }).toList(),
-                  onChanged: (val) {
-                    setState(() => _selectedPlate = val);
-                    if (val != null) context.go('/history/$val');
-                  },
+                title: Text(plate),
+                subtitle: Text(
+                  'De ${ingreso.toLocal()} a ${egreso?.toLocal() ?? '-'} • \$${(price ?? 0).toStringAsFixed(2)}',
                 ),
-              ],
-            ),
+                onTap: () {
+                  // futuro: comprobante
+                  // context.go('/receipt', extra: id);
+                },
+              );
+            },
           );
         },
       ),

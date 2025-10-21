@@ -1,49 +1,47 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
 import 'package:tp3_v2/domain/logic/current_user_provider.dart';
 import 'package:tp3_v2/presentation/screens/history_screen.dart';
 import 'package:tp3_v2/presentation/screens/login_screen.dart';
 import 'package:tp3_v2/presentation/screens/register_screen.dart';
 import 'package:tp3_v2/presentation/screens/home_screen.dart';
 import 'package:tp3_v2/presentation/screens/scan_screen.dart';
-
-final _key = GlobalKey<NavigatorState>();
+import 'package:tp3_v2/presentation/screens/active_session_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  // Escucha cambios de autenticación
   final user = ref.watch(currentUserProvider).value;
 
   return GoRouter(
-    navigatorKey: _key,
+    // ⚠️ sin navigatorKey para evitar duplicados en web/hot reload
     initialLocation: '/home',
-
-    /* ==========  AUTH-GATE CON REDIRECT  ========== */
     redirect: (context, state) {
       final loggingIn = state.matchedLocation == '/login';
       final registering = state.matchedLocation == '/register';
 
-      // Si va a login/register y YA está logueado → sacarlo de ahí
       if (user != null && (loggingIn || registering)) return '/home';
-
-      // Si va a cualquier otra cosa y NO está logueado → forzar login
       if (user == null && !loggingIn && !registering) return '/login';
-
-      // En cualquier otro caso dejar pasar
       return null;
     },
-
     routes: [
-      /* --- públicas --- */
-      GoRoute(path: '/login',   builder: (_, __) =>  LoginScreen()),
-      GoRoute(path: '/register',builder: (_, __) =>  RegisterScreen()),
+      // públicas
+      GoRoute(path: '/login', builder: (_, __) => LoginScreen()),
+      GoRoute(path: '/register', builder: (_, __) => RegisterScreen()),
 
-      /* --- privadas (protegidas por redirect) --- */
-      GoRoute(path: '/home',    builder: (_, __) => const HomeScreen()),
-      GoRoute(path: '/scan',    builder: (_, __) => const ScanScreen()),
-      GoRoute(path: '/otro',    builder: (_, __) => const Placeholder()),
+      // privadas
+      GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
+      GoRoute(path: '/scan', builder: (_, __) => const ScanScreen()),
       GoRoute(path: '/history', builder: (_, __) => const HistoryScreen()),
-      GoRoute(path: '/settings',builder: (_, __) => const Placeholder()),
+
+      // activa (recibe opcionalmente el id por extra)
+      GoRoute(
+        path: '/active',
+        builder: (_, state) {
+          final ticketId = state.extra is String ? state.extra as String : null;
+          return ActiveSessionScreen(ticketId: ticketId);
+        },
+      ),
     ],
   );
 });
