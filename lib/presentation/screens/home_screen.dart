@@ -21,7 +21,7 @@ class HomeScreen extends StatelessWidget {
 
     final displayName = (user.displayName?.isNotEmpty == true)
         ? user.displayName!
-        : (user.email ?? 'Usuario');
+        : (user.email ?? 'Cliente');
 
     final activeQuery = FirebaseFirestore.instance
         .collection('tickets')
@@ -35,14 +35,8 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Nombre del usuario
-            Text(
-              displayName,
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
+            Text(displayName, style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 20),
-
-            // Subtítulo
             Text(
               'Estadías activas',
               style: Theme.of(context)
@@ -51,8 +45,6 @@ class HomeScreen extends StatelessWidget {
                   ?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
-
-            // Lista de tickets activos
             Expanded(
               child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                 stream: activeQuery.snapshots(),
@@ -81,7 +73,7 @@ class HomeScreen extends StatelessWidget {
 
                       return ListTile(
                         leading: const CircleAvatar(
-                          backgroundColor: Color(0xFFA5D6A7), // verde suave
+                          backgroundColor: Color(0xFFA5D6A7),
                           child: Icon(Icons.play_arrow, color: Colors.black),
                         ),
                         title: Text(plate),
@@ -96,11 +88,6 @@ class HomeScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
-      // FAB para ir a Scan
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go('/scan'),
-        child: const Icon(Icons.qr_code_scanner),
       ),
     );
   }

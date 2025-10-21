@@ -1,14 +1,12 @@
-import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-
-// Usa el scaffold común con hamburguesa/back
 import 'package:tp3_v2/presentation/widgets/app_scaffold.dart';
 
 class ActiveSessionScreen extends StatelessWidget {
   final String? ticketId;
-  const ActiveSessionScreen({super.key, this.ticketId});
+  final bool readOnly; // forzado a true en el router del cliente
+  const ActiveSessionScreen({super.key, this.ticketId, this.readOnly = true});
 
   @override
   Widget build(BuildContext context) {
@@ -20,6 +18,7 @@ class ActiveSessionScreen extends StatelessWidget {
     }
 
     final doc = FirebaseFirestore.instance.collection('tickets').doc(ticketId);
+    final uid = FirebaseAuth.instance.currentUser?.uid;
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: doc.snapshots(),
@@ -38,6 +37,14 @@ class ActiveSessionScreen extends StatelessWidget {
         }
 
         final d = snap.data!.data()!;
+        final owner = d['userId'] as String?;
+        if (uid == null || owner != uid) {
+          return const AppScaffold(
+            title: 'Estadía activa',
+            body: Center(child: Text('No autorizado')),
+          );
+        }
+
         final plate  = (d['plate'] ?? '') as String;
         final status = (d['status'] ?? '') as String; // 'active' | 'closed'
         final ingreso = (d['ingreso'] as Timestamp).toDate();
@@ -45,6 +52,10 @@ class ActiveSessionScreen extends StatelessWidget {
         final precio  = d['precioFinal'];
 
         final isActive = status == 'active';
+        final dur = DateTime.now().toUtc().difference(ingreso.toUtc());
+        final hh = dur.inHours.toString().padLeft(2, '0');
+        final mm = (dur.inMinutes % 60).toString().padLeft(2, '0');
+        final ss = (dur.inSeconds % 60).toString().padLeft(2, '0');
 
         return AppScaffold(
           title: 'Estadía activa',
@@ -65,12 +76,18 @@ class ActiveSessionScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
 
-                // Timer en vivo si está activo; si está cerrado, muestra rango y total
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
                     child: isActive
-                        ? _LiveTimer(from: ingreso)
+                        ? Column(
+                            children: [
+                              const Text('Tiempo transcurrido'),
+                              const SizedBox(height: 6),
+                              Text('$hh:$mm:$ss',
+                                  style: Theme.of(context).textTheme.displaySmall),
+                            ],
+                          )
                         : Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -88,80 +105,12 @@ class ActiveSessionScreen extends StatelessWidget {
 
                 const Spacer(),
 
-                // Botón Finalizar
-                FilledButton.icon(
-                  onPressed: isActive
-                      ? () async {
-                          final now = DateTime.now().toUtc();
-                          final minutes = now.difference(ingreso.toUtc()).inMinutes.clamp(1, 1000000);
-                          final amount = (100 / 60.0) * minutes; // tarifa simple
-
-                          await doc.update({
-                            'egreso': Timestamp.fromDate(now),
-                            'precioFinal': amount,
-                            'status': 'closed',
-                          });
-
-                          if (context.mounted) {
-                            // Evitar pop() en web: navegar directo
-                            context.go('/history');
-                          }
-                        }
-                      : null,
-                  icon: const Icon(Icons.stop_circle_outlined),
-                  label: Text(isActive ? 'Finalizar' : 'Finalizado'),
-                ),
+                // Cliente no finaliza: sin botón de acción
               ],
             ),
           ),
         );
       },
-    );
-  }
-}
-
-/// Widget simple que actualiza el tiempo transcurrido cada 1s.
-class _LiveTimer extends StatefulWidget {
-  final DateTime from;
-  const _LiveTimer({required this.from});
-
-  @override
-  State<_LiveTimer> createState() => _LiveTimerState();
-}
-
-class _LiveTimerState extends State<_LiveTimer> {
-  late Timer _t;
-  late Duration _dur;
-
-  @override
-  void initState() {
-    super.initState();
-    _dur = DateTime.now().toUtc().difference(widget.from.toUtc());
-    _t = Timer.periodic(const Duration(seconds: 1), (_) {
-      setState(() {
-        _dur = DateTime.now().toUtc().difference(widget.from.toUtc());
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _t.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final hh = _dur.inHours.toString().padLeft(2, '0');
-    final mm = (_dur.inMinutes % 60).toString().padLeft(2, '0');
-    final ss = (_dur.inSeconds % 60).toString().padLeft(2, '0');
-
-    return Column(
-      children: [
-        const Text('Tiempo transcurrido'),
-        const SizedBox(height: 6),
-        Text('$hh:$mm:$ss', style: Theme.of(context).textTheme.displaySmall),
-      ],
     );
   }
 }

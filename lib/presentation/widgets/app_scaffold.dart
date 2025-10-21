@@ -2,16 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-/// Scaffold común con:
-/// - AppBar que muestra Back si puede, sino hamburguesa
-/// - Drawer de navegación
 class AppScaffold extends StatelessWidget {
   final String title;
   final Widget body;
   final PreferredSizeWidget? bottom;
   final List<Widget>? actions;
   final Widget? floatingActionButton;
-  final bool showMenu; // en Login/Register: false
+  final bool showMenu;
 
   const AppScaffold({
     super.key,
@@ -46,19 +43,22 @@ class AppScaffold extends StatelessWidget {
         actions: actions,
         bottom: bottom,
       ),
-      drawer: showMenu ? _AppDrawer() : null,
+      drawer: showMenu ? const _ClientDrawer() : null,
       body: body,
       floatingActionButton: floatingActionButton,
     );
   }
 }
 
-class _AppDrawer extends StatelessWidget {
+class _ClientDrawer extends StatelessWidget {
+  const _ClientDrawer();
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
+
     Future<void> go(String route) async {
-      Navigator.of(context).pop(); // cerrar drawer
+      Navigator.of(context).pop();
       context.go(route);
     }
 
@@ -68,7 +68,7 @@ class _AppDrawer extends StatelessWidget {
           children: [
             UserAccountsDrawerHeader(
               accountName: Text(user?.displayName ?? ''),
-              accountEmail: Text(user?.email ?? 'Invitado'),
+              accountEmail: Text(user?.email ?? 'Cliente'),
               currentAccountPicture: const CircleAvatar(child: Icon(Icons.person)),
             ),
             ListTile(
@@ -77,14 +77,14 @@ class _AppDrawer extends StatelessWidget {
               onTap: () => go('/home'),
             ),
             ListTile(
-              leading: const Icon(Icons.qr_code_scanner),
-              title: const Text('Escanear'),
-              onTap: () => go('/scan'),
-            ),
-            ListTile(
               leading: const Icon(Icons.history),
               title: const Text('Historial'),
               onTap: () => go('/history'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.badge_outlined),
+              title: const Text('Mis datos'),
+              onTap: () => go('/perfil'),
             ),
             const Spacer(),
             const Divider(height: 0),
@@ -93,7 +93,6 @@ class _AppDrawer extends StatelessWidget {
               title: const Text('Cerrar sesión'),
               onTap: () async {
                 await FirebaseAuth.instance.signOut();
-                // limpiar stack y enviar a login
                 if (context.mounted) context.go('/login');
               },
             ),

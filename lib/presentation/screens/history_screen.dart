@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:tp3_v2/presentation/widgets/app_scaffold.dart';
 
 class HistoryScreen extends StatelessWidget {
@@ -47,10 +46,11 @@ class HistoryScreen extends StatelessWidget {
             separatorBuilder: (_, __) => const Divider(height: 0),
             itemBuilder: (context, i) {
               final d = docs[i].data();
-              final id = docs[i].id;
               final plate = (d['plate'] ?? '') as String;
               final ingreso = (d['ingreso'] as Timestamp).toDate();
-              final egreso = d['egreso'] != null ? (d['egreso'] as Timestamp).toDate() : null;
+              final egreso = d['egreso'] != null
+                  ? (d['egreso'] as Timestamp).toDate()
+                  : null;
               final price = d['precioFinal'];
 
               return ListTile(
