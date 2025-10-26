@@ -23,10 +23,11 @@ class HomeScreen extends StatelessWidget {
         ? user.displayName!
         : (user.email ?? 'Cliente');
 
+    // 👇 Activas = egreso == null
     final activeQuery = FirebaseFirestore.instance
         .collection('tickets')
         .where('userId', isEqualTo: user.uid)
-        .where('status', isEqualTo: 'active');
+        .where('egreso', isNull: true);
 
     return AppScaffold(
       title: 'Home',
@@ -64,9 +65,11 @@ class HomeScreen extends StatelessWidget {
                     itemBuilder: (context, i) {
                       final d = docs[i].data();
                       final id = docs[i].id;
-                      final plate = (d['plate'] ?? '') as String;
-                      final ingreso = (d['ingreso'] as Timestamp).toDate();
 
+                      // Fallback de patente (vehiclePlate -> plate)
+                      final plate = (d['vehiclePlate'] ?? d['plate'] ?? '') as String;
+
+                      final ingreso = (d['ingreso'] as Timestamp).toDate();
                       final dur = DateTime.now().toUtc().difference(ingreso.toUtc());
                       final hh = dur.inHours.toString().padLeft(2, '0');
                       final mm = (dur.inMinutes % 60).toString().padLeft(2, '0');

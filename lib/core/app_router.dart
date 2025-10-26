@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:tp3_v2/presentation/screens/ticket_screen.dart';
 import 'package:tp3_v2/domain/logic/current_user_provider.dart';
 import 'package:tp3_v2/presentation/screens/login_screen.dart';
 import 'package:tp3_v2/presentation/screens/register_screen.dart';
@@ -36,7 +36,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/active',
         builder: (_, state) {
           final ticketId = state.extra is String ? state.extra as String : null;
-          return ActiveSessionScreen(ticketId: ticketId, readOnly: true);
+          return ActiveSessionScreen(ticketId: ticketId, readOnly: false);
+        },
+      ),
+
+      // comprobante
+      GoRoute(
+        path: '/ticket/:id',
+        builder: (_, state) {
+          final id = state.pathParameters['id']!;
+          return TicketScreen(ticketId: id);
         },
       ),
     ],
