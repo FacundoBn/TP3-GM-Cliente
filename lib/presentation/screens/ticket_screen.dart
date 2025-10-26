@@ -28,7 +28,6 @@ class TicketScreen extends StatelessWidget {
         }
 
         final data = snap.data!.data()!;
-        // Solo los campos que mostramos en el comprobante, con fallbacks
         final plate = (data['vehiclePlate'] ?? data['plate'] ?? '') as String;
         final ingresoTs = data['ingreso'] as Timestamp?;
         final egresoTs  = data['egreso']  as Timestamp?;
