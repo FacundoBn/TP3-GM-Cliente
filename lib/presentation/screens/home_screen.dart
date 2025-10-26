@@ -83,6 +83,7 @@ class HomeScreen extends StatelessWidget {
                         subtitle: Text('Desde: ${ingreso.toLocal()} • $hh:$mm'),
                         trailing: const Chip(label: Text('ACTIVO')),
                         onTap: () => context.go('/active', extra: id),
+
                       );
                     },
                   );
