@@ -1,62 +1,54 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:collection/collection.dart';
 
 class UserModel {
-  final String uid;          // Siempre igual al uid de FirebaseAuth
-  final String email;        // Desde FirebaseAuth.user.email
-  final String nombre;       // Editable por el usuario
-  final String apellido;     // Editable
-  final String? cuit;        // Nullable, puede completarse luego
-  final String userName;     // Alias o nombre visible
-  final DateTime createdAt;  // Fecha de alta en Firestore
+  final String uid;
+  final String email;
+  final String displayName;
+  final List<String> roleIds;
 
-  UserModel({
+  const UserModel({
     required this.uid,
     required this.email,
-    required this.nombre,
-    required this.apellido,
-    required this.userName,
-    this.cuit,
-    required this.createdAt,
+    required this.displayName,
+    required this.roleIds,
   });
 
-  /// 🔹 Constructor desde Firestore
-  factory UserModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
-    final data = doc.data()!;
-    return UserModel(
-      uid: doc.id,
-      email: data['email'] ?? '',
-      nombre: data['nombre'] ?? '',
-      apellido: data['apellido'] ?? '',
-      userName: data['userName'] ?? '',
-      cuit: data['cuit'],
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-    );
-  }
+  /// Factory estándar: construye desde Firestore (Map) + uid del doc
+  factory UserModel.fromMap(String uid, Map<String, dynamic> data) {
+    final rawRoles = (data['roleIds'] as List?) ?? const [];
+    final roles = rawRoles.map((e) => e.toString()).toList();
 
-  /// 🔹 Serialización a Firestore
-  Map<String, dynamic> toFirestore() {
-    return {
-      'email': email,
-      'nombre': nombre,
-      'apellido': apellido,
-      'userName': userName,
-      if (cuit != null) 'cuit': cuit,
-      'createdAt': Timestamp.fromDate(createdAt),
-    };
-  }
-
-  /// 🔹 Factory inicial mínimo (post signup)
-  factory UserModel.initialFromAuth({
-    required String uid,
-    required String email,
-  }) {
     return UserModel(
       uid: uid,
-      email: email,
-      nombre: '',
-      apellido: '',
-      userName: '',
-      createdAt: DateTime.now(),
+      email: (data['email'] ?? '').toString(),
+      displayName: (data['displayName'] ?? '').toString(),
+      roleIds: roles,
     );
   }
+
+  Map<String, dynamic> toMap() => {
+        'email': email,
+        'displayName': displayName,
+        'roleIds': roleIds,
+      };
+
+  bool get isAdmin => roleIds.contains('admin');
+  bool get isOperador => roleIds.contains('operador');
+  bool get isCliente => roleIds.contains('cliente');
+
+  @override
+  String toString() =>
+      'UserModel(uid=$uid, email=$email, displayName=$displayName, roleIds=$roleIds)';
+
+  @override
+  bool operator ==(Object other) =>
+      other is UserModel &&
+      other.uid == uid &&
+      other.email == email &&
+      other.displayName == displayName &&
+      const ListEquality().equals(other.roleIds, roleIds);
+
+  @override
+  int get hashCode =>
+      Object.hash(uid, email, displayName, const ListEquality().hash(roleIds));
 }
