@@ -133,18 +133,6 @@ class ActiveSessionScreen extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                if (isActive && !readOnly)
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.stop),
-                      label: const Text('Finalizar estadía'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      onPressed: () => _finishAndGoToReceipt(context, doc, d),
-                    ),
-                  ),
               ],
             ),
           ),

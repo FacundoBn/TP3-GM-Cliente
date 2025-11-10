@@ -1,54 +1,129 @@
-import 'package:collection/collection.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tp3_v2/domain/logic/current_user_provider.dart';
+import 'package:tp3_v2/presentation/widgets/app_scaffold.dart';
 
-class UserModel {
-  final String uid;
-  final String email;
-  final String displayName;
-  final List<String> roleIds;
+class MisDatosScreen extends ConsumerWidget {
+  const MisDatosScreen({super.key});
 
-  const UserModel({
-    required this.uid,
-    required this.email,
-    required this.displayName,
-    required this.roleIds,
-  });
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final userAsync = ref.watch(currentUserProvider);
 
-  /// Factory estándar: construye desde Firestore (Map) + uid del doc
-  factory UserModel.fromMap(String uid, Map<String, dynamic> data) {
-    final rawRoles = (data['roleIds'] as List?) ?? const [];
-    final roles = rawRoles.map((e) => e.toString()).toList();
+    return AppScaffold(
+      title: 'Mis datos',
+      body: userAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (userModel) {
+          if (userModel == null) {
+            return const Center(child: Text('No hay sesión activa'));
+          }
 
-    return UserModel(
-      uid: uid,
-      email: (data['email'] ?? '').toString(),
-      displayName: (data['displayName'] ?? '').toString(),
-      roleIds: roles,
+          final uid = userModel.uid;
+
+          final ticketsStream = FirebaseFirestore.instance
+              .collection('tickets')
+              .where('userId', isEqualTo: uid)
+              .snapshots();
+
+          return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: ticketsStream,
+            builder: (context, snap) {
+              final plates = <String>{};
+
+              if (snap.hasData) {
+                for (final doc in snap.data!.docs) {
+                  final data = doc.data();
+                  final plate =
+                  (data['vehiclePlate'] ?? data['plate'] ?? '') as String;
+                  if (plate.isNotEmpty) plates.add(plate);
+                }
+              }
+
+              return ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  const Text(
+                    'Datos del usuario',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _InfoRow(
+                    label: 'Nombre',
+                    value: userModel.displayName ?? '—',
+                  ),
+                  _InfoRow(
+                    label: 'Email',
+                    value: userModel.email ?? '—',
+                  ),
+                  if (userModel.roleIds != null &&
+                      userModel.roleIds!.isNotEmpty)
+                    _InfoRow(
+                      label: 'Roles',
+                      value: userModel.roleIds!.join(', '),
+                    ),
+
+                  const SizedBox(height: 24),
+                  const Divider(),
+                  const SizedBox(height: 24),
+
+                  const Text(
+                    'Patentes registradas',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  if (snap.connectionState == ConnectionState.waiting)
+                    const Center(child: CircularProgressIndicator())
+                  else if (plates.isEmpty)
+                    const Text('Todavía no hay patentes registradas.')
+                  else
+                    ...plates.map(
+                          (p) => ListTile(
+                        leading: const Icon(Icons.directions_car),
+                        title: Text(p),
+                      ),
+                    ),
+                ],
+              );
+            },
+          );
+        },
+      ),
     );
   }
+}
 
-  Map<String, dynamic> toMap() => {
-        'email': email,
-        'displayName': displayName,
-        'roleIds': roleIds,
-      };
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
 
-  bool get isAdmin => roleIds.contains('admin');
-  bool get isOperador => roleIds.contains('operador');
-  bool get isCliente => roleIds.contains('cliente');
+  const _InfoRow({required this.label, required this.value});
 
   @override
-  String toString() =>
-      'UserModel(uid=$uid, email=$email, displayName=$displayName, roleIds=$roleIds)';
-
-  @override
-  bool operator ==(Object other) =>
-      other is UserModel &&
-      other.uid == uid &&
-      other.email == email &&
-      other.displayName == displayName &&
-      const ListEquality().equals(other.roleIds, roleIds);
-
-  @override
-  int get hashCode =>
-      Object.hash(uid, email, displayName, const ListEquality().hash(roleIds));
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              '$label:',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          Expanded(child: Text(value)),
+        ],
+      ),
+    );
+  }
 }
