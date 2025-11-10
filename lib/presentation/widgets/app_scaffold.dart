@@ -1,104 +1,82 @@
+// lib/presentation/widgets/app_scaffold.dart
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'app_drawer.dart';
 
 class AppScaffold extends StatelessWidget {
   final String title;
   final Widget body;
-  final PreferredSizeWidget? bottom;
   final List<Widget>? actions;
   final Widget? floatingActionButton;
-  final bool showMenu;
+  final PreferredSizeWidget? bottom;
+  final bool withDrawer;
+  final bool showMenu; // compatibilidad
 
   const AppScaffold({
     super.key,
     required this.title,
     required this.body,
-    this.bottom,
     this.actions,
     this.floatingActionButton,
+    this.bottom,
+    this.withDrawer = true,
     this.showMenu = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    final canPop = Navigator.of(context).canPop();
+    final theme = Theme.of(context);
+    final shouldShowDrawer = withDrawer && showMenu;
+
     return Scaffold(
+      drawer: shouldShowDrawer ? const AppDrawer() : null,
       appBar: AppBar(
-        title: Text(title),
-        automaticallyImplyLeading: false,
-        leading: canPop
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => context.pop(),
-              )
-            : (showMenu
-                ? Builder(
-                    builder: (ctx) => IconButton(
-                      icon: const Icon(Icons.menu),
-                      onPressed: () => Scaffold.of(ctx).openDrawer(),
-                    ),
-                  )
-                : null),
+        title: Text(
+          title,
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+        ),
         actions: actions,
         bottom: bottom,
       ),
-      drawer: showMenu ? const _ClientDrawer() : null,
-      body: body,
       floatingActionButton: floatingActionButton,
-    );
-  }
-}
-
-class _ClientDrawer extends StatelessWidget {
-  const _ClientDrawer();
-
-  @override
-  Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-
-    Future<void> go(String route) async {
-      Navigator.of(context).pop();
-      context.go(route);
-    }
-
-    return Drawer(
-      child: SafeArea(
-        child: Column(
-          children: [
-            UserAccountsDrawerHeader(
-              accountName: Text(user?.displayName ?? ''),
-              accountEmail: Text(user?.email ?? 'Cliente'),
-              currentAccountPicture: const CircleAvatar(child: Icon(Icons.person)),
+      body: ScrollConfiguration(
+        behavior: const _NoGlowScroll(),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 960),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.shadow.withOpacity(0.05),
+                      blurRadius: 18,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: body,
+                ),
+              ),
             ),
-            ListTile(
-              leading: const Icon(Icons.home),
-              title: const Text('Home'),
-              onTap: () => go('/home'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.history),
-              title: const Text('Historial'),
-              onTap: () => go('/history'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.badge_outlined),
-              title: const Text('Mis datos'),
-              onTap: () => go('/perfil'),
-            ),
-            const Spacer(),
-            const Divider(height: 0),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text('Cerrar sesión'),
-              onTap: () async {
-                await FirebaseAuth.instance.signOut();
-                if (context.mounted) context.go('/login');
-              },
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
+}
+
+class _NoGlowScroll extends ScrollBehavior {
+  const _NoGlowScroll();
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) =>
+      child;
 }

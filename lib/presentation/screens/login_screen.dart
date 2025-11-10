@@ -1,24 +1,20 @@
+// lib/presentation/screens/login_screen.dart
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import 'package:tp3_v2/domain/logic/auth_provider.dart';
-import 'package:tp3_v2/presentation/widgets/app_text_field.dart';
-import 'package:tp3_v2/presentation/widgets/primary_button.dart';
-import 'package:tp3_v2/data/user_service.dart';
-
-class LoginScreen extends ConsumerStatefulWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
-
   @override
-  ConsumerState<LoginScreen> createState() => _LoginScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final emailCtrl = TextEditingController(text: 'admin@demo.com');
-  final passCtrl  = TextEditingController(text: '123456');
-  bool _isLoading = false;
+class _LoginScreenState extends State<LoginScreen> {
+  final formKey = GlobalKey<FormState>();
+  final emailCtrl = TextEditingController();
+  final passCtrl = TextEditingController();
+  bool isLoading = false;
+  bool obscure = true;
 
   @override
   void dispose() {
@@ -28,60 +24,103 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _login() async {
-    if (_isLoading) return;
-    setState(() => _isLoading = true);
-
+    if (!(formKey.currentState?.validate() ?? false)) return;
+    setState(() => isLoading = true);
     try {
-      // 1) Login con tu servicio actual (Riverpod)
-      final authService = ref.read(authServiceProvider);
-      await authService.signIn(emailCtrl.text.trim(), passCtrl.text);
-
-      // 2) Garantizar users/{uid} con roleIds:["cliente"] en el primer ingreso
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        await UserService().ensureClientUserDoc(user);
-      }
-
-      // ✅ AuthGate / listener redirige a Home automáticamente
-      // Si no tuvieras AuthGate, podrías hacer: context.go('/');
-
-    } catch (e) {
-      if (!mounted) return;
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: emailCtrl.text.trim(),
+        password: passCtrl.text.trim(),
+      );
+      if (mounted) context.go('/');
+    } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(content: Text(e.message ?? 'Error al iniciar sesión')),
       );
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AppTextField(controller: emailCtrl, label: 'Email'),
-                const SizedBox(height: 12),
-                AppTextField(controller: passCtrl, label: 'Clave', obscure: true),
-                const SizedBox(height: 16),
-                PrimaryButton(
-                  label: 'Ingresar',
-                  loading: _isLoading,
-                  onPressed: _login,
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircleAvatar(
+                      radius: 30,
+                      backgroundColor: theme.colorScheme.primary.withOpacity(.10),
+                      child: Icon(Icons.local_parking_rounded,
+                          size: 34, color: theme.colorScheme.primary),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Ingresá a tu cuenta',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    TextFormField(
+                      controller: emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(
+                        labelText: 'Email',
+                        prefixIcon: Icon(Icons.alternate_email_rounded),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Ingresá tu email';
+                        if (!v.contains('@')) return 'Email inválido';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: passCtrl,
+                      obscureText: obscure,
+                      decoration: InputDecoration(
+                        labelText: 'Contraseña',
+                        prefixIcon: const Icon(Icons.lock_outline_rounded),
+                        suffixIcon: IconButton(
+                          onPressed: () => setState(() => obscure = !obscure),
+                          icon: Icon(
+                            obscure ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                          ),
+                        ),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Ingresá tu contraseña';
+                        if (v.length < 6) return 'Mínimo 6 caracteres';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: isLoading ? null : _login,
+                        child: isLoading
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                            : const Text('Ingresar'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () => context.go('/register'),
+                      child: const Text('Crear cuenta'),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: () => context.go('/register'),
-                  child: const Text('Crear cuenta nueva'),
-                ),
-              ],
+              ),
             ),
           ),
         ),

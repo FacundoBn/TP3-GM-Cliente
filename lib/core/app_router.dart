@@ -1,65 +1,76 @@
+// lib/core/app_router.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import 'package:tp3_v2/presentation/screens/ticket_screen.dart';
-import 'package:tp3_v2/domain/logic/current_user_provider.dart';
 import 'package:tp3_v2/presentation/screens/login_screen.dart';
 import 'package:tp3_v2/presentation/screens/register_screen.dart';
 import 'package:tp3_v2/presentation/screens/home_screen.dart';
 import 'package:tp3_v2/presentation/screens/history_screen.dart';
-import 'package:tp3_v2/presentation/screens/active_session_screen.dart';
 import 'package:tp3_v2/presentation/screens/mis_datos_screen.dart';
+import 'package:tp3_v2/presentation/screens/ticket_screen.dart';
+import 'package:tp3_v2/presentation/screens/active_session_screen.dart';
+
+final _authStreamProvider =
+    StreamProvider<User?>((ref) => FirebaseAuth.instance.authStateChanges());
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final userAsync = ref.watch(currentUserProvider);
-  final authUser = FirebaseAuth.instance.currentUser;
+  ref.watch(_authStreamProvider);
 
   return GoRouter(
-    initialLocation: '/home',
+    initialLocation: '/login',
+    refreshListenable: GoRouterRefreshStream(
+      FirebaseAuth.instance.authStateChanges(),
+    ),
     redirect: (context, state) {
-      final loggingIn = state.matchedLocation == '/login';
-      final registering = state.matchedLocation == '/register';
+      final loc = state.matchedLocation;
+      final isAuthPage = loc == '/login' || loc == '/register';
+      final user = FirebaseAuth.instance.currentUser;
 
-      if (userAsync.isLoading) return null;
-
-      final userDoc = userAsync.value;
-
-      if (authUser != null && userDoc == null) {
-        return null;
-      }
-
-      if (userDoc != null && (loggingIn || registering)) {
-        return '/home';
-      }
-
-      if (authUser == null && userDoc == null && !loggingIn && !registering) {
-        return '/login';
-      }
-
+      if (user == null && !isAuthPage) return '/login';
+      if (user != null && isAuthPage) return '/';
       return null;
     },
     routes: [
-      GoRoute(path: '/login', builder: (_, __) => LoginScreen()),
-      GoRoute(path: '/register', builder: (_, __) => RegisterScreen()),
-      GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
+      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
+
+      GoRoute(path: '/', builder: (_, __) => const HomeScreen()),
       GoRoute(path: '/history', builder: (_, __) => const HistoryScreen()),
-      GoRoute(path: '/perfil', builder: (_, __) => const MisDatosScreen()),
-      GoRoute(
-        path: '/active',
-        builder: (_, state) {
-          final ticketId = state.extra is String ? state.extra as String : null;
-          return ActiveSessionScreen(ticketId: ticketId, readOnly: false);
-        },
-      ),
+      GoRoute(path: '/mis-datos', builder: (_, __) => const MisDatosScreen()),
+
       GoRoute(
         path: '/ticket/:id',
-        builder: (_, state) {
-          final id = state.pathParameters['id']!;
-          return TicketScreen(ticketId: id);
-        },
+        builder: (context, state) =>
+            TicketScreen(ticketId: state.pathParameters['id']!),
+      ),
+
+      // Compat: /active sin id (muestra placeholder)
+      GoRoute(
+        path: '/active',
+        builder: (_, __) => const ActiveSessionScreen(),
+      ),
+
+      // Detalle: /active/:id (MOSTRAR la estadía activa)
+      GoRoute(
+        path: '/active/:id',
+        builder: (context, state) =>
+            ActiveSessionScreen(ticketId: state.pathParameters['id']!),
       ),
     ],
   );
 });
+
+class GoRouterRefreshStream extends ChangeNotifier {
+  GoRouterRefreshStream(Stream<dynamic> stream) {
+    _sub = stream.asBroadcastStream().listen((_) => notifyListeners());
+  }
+  late final StreamSubscription<dynamic> _sub;
+  @override
+  void dispose() {
+    _sub.cancel();
+    super.dispose();
+  }
+}
